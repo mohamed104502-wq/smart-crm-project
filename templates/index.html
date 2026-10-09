@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart CRM Helper</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="brand">✦ Smart CRM</div>
+        <ul class="nav-menu">
+            <li class="nav-item active" onclick="switchTab('dashboard', this)">Dashboard</li>
+            <li class="nav-item" onclick="switchTab('customers', this)">Customers & Churn</li>
+            <li class="nav-item" onclick="switchTab('tickets', this)">Support Tickets</li>
+            <li class="nav-item" onclick="switchTab('trends', this)">Market Trends</li>
+            <li class="nav-item" onclick="switchTab('reports', this)">Reports & Analytics</li>
+            <li class="nav-item" onclick="switchTab('ai', this)">AI Assistant</li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="search-bar">
+                <form action="/" method="GET">
+                    <input type="text" name="search" placeholder="Search customer name..." value="{{ search_query }}">
+                </form>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <a href="/export_excel" class="btn-excel">📥 Export Excel</a>
+                <button class="btn-primary" onclick="openModal()">+ Add Customer</button>
+            </div>
+        </header>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="view-section active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Active Customers</h3>
+                    <div class="value">{{ total_customers }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Expected Revenue</h3>
+                    <div class="value">{{ "{:,.0f}".format(total_sales) }} EGP</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Return Rate (Returns)</h3>
+                    <div class="value" style="color: var(--hot-red);">{{ return_rate }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Support Tickets</h3>
+                    <div class="value" style="color: var(--warm-amber);">{{ tickets|length }}</div>
+                </div>
+            </div>
+
+            <h2 class="section-title">AI Suggested Actions Today</h2>
+            <div class="ai-suggestions">
+                <div class="suggestion-card hot">
+                    <div class="suggestion-info">
+                        <h4>Call Mona Adel (Hot Lead 🔥)</h4>
+                        <p>No contact for 12 days · High interaction</p>
+                    </div>
+                    <button class="btn-action" onclick="triggerAIPrompt('Write a message for Mona Adel')">AI Message</button>
+                </div>
+                <div class="suggestion-card warm">
+                    <div class="suggestion-info">
+                        <h4>Karim Store (Warm Lead ☀️ - Churn Risk)</h4>
+                        <p>Orders dropped by 40% this month · Suggest 15% loyalty discount</p>
+                    </div>
+                    <button class="btn-action" onclick="triggerAIPrompt('Write a message for Karim Store')">Send Offer</button>
+                </div>
+            </div>
+
+            <h2 class="section-title">Recent Customers</h2>
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Customer Name</th>
+                            <th>Phone</th>
+                            <th>Last Purchase</th>
+                            <th>Total Spent</th>
+                            <th>AI Recommendation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for customer in customers[:5] %}
+                        <tr>
+                            <td>{{ customer.name }}</td>
+                            <td>{{ customer.phone }}</td>
+                            <td>{{ customer.last_purchase }}</td>
+                            <td>{{ "{:,.0f}".format(customer.total_spent) }} EGP</td>
+                            <td style="color: var(--brand-indigo); font-weight: bold;">{{ customer.ml_recommendation }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Customers Section -->
+        <section id="customers" class="view-section">
+            <h2 class="section-title">Customer Management & Churn Prediction</h2>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                <a href="/?filter=all" class="btn-primary {{ 'active-filter' if current_filter == 'all' else '' }}" style="text-decoration: none;">All</a>
+                <a href="/?filter=hot" class="btn-primary {{ 'active-filter' if current_filter == 'hot' else '' }}" style="text-decoration: none;">Hot Lead</a>
+                <a href="/?filter=warm" class="btn-primary {{ 'active-filter' if current_filter == 'warm' else '' }}" style="text-decoration: none;">Warm Lead</a>
+                <a href="/?filter=cold" class="btn-primary {{ 'active-filter' if current_filter == 'cold' else '' }}" style="text-decoration: none;">Cold Lead</a>
+                <a href="/?filter=churn_risk" class="btn-primary {{ 'active-filter' if current_filter == 'churn_risk' else '' }}" style="text-decoration: none;">High Churn Risk ⚠️</a>
+            </div>
+
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Customer Name</th>
+                            <th>Phone</th>
+                            <th>Last Contact</th>
+                            <th>Total Spent</th>
+                            <th>AI Status</th>
+                            <th>Churn Risk Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for customer in customers %}
+                        <tr>
+                            <td>{{ customer.name }}</td>
+                            <td>{{ customer.phone }}</td>
+                            <td>{{ customer.last_purchase }}</td>
+                            <td>{{ "{:,.0f}".format(customer.total_spent) }} EGP</td>
+                            <td style="font-weight: bold; color: var(--brand-indigo);">{{ customer.ml_recommendation }}</td>
+                            <td>
+                                <span style="padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 0.85rem;" class="{{ 'risk-high' if 'High' in customer.churn_risk else 'risk-low' }}">
+                                    {{ customer.churn_risk }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">No data found for this filter</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Support Tickets Section -->
+        <section id="tickets" class="view-section">
+            <h2 class="section-title">
+                Customer Support Ticketing System
+                <button class="btn-primary" onclick="openTicketModal()" style="font-size: 0.9rem; padding: 6px 15px;">+ New Ticket</button>
+            </h2>
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ticket ID</th>
+                            <th>Customer Name</th>
+                            <th>Issue Description</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Created Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ticket in tickets %}
+                        <tr>
+                            <td>#{{ ticket.id }}</td>
+                            <td style="font-weight: bold;">{{ ticket.customer_name }}</td>
+                            <td>{{ ticket.issue }}</td>
+                            <td><span style="padding: 4px 10px; border-radius: 6px; font-weight: bold;" class="status-badge">{{ ticket.status }}</span></td>
+                            <td><span style="font-weight: bold;">{{ ticket.priority }}</span></td>
+                            <td>{{ ticket.created_at }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">No support tickets found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Market Trends Section -->
+        <section id="trends" class="view-section">
+            <h2 class="section-title">Market Trend Analysis & External Insights</h2>
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product Category</th>
+                            <th>Market Trend Change</th>
+                            <th>AI Recommendation & Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trend in market_trends %}
+                        <tr>
+                            <td style="font-weight: bold; color: var(--brand-indigo);">{{ trend.product_category }}</td>
+                            <td><span style="padding: 5px 12px; border-radius: 6px; background-color: #fee2e2; color: #b91c1c; font-weight: bold;">{{ trend.trend_change }}</span></td>
+                            <td>{{ trend.recommendation }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Reports Section -->
+        <section id="reports" class="view-section">
+            <h2 class="section-title">Sales Reports & Monthly Analytics</h2>
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3 style="margin-bottom: 10px; color: var(--text-muted);">Monthly Revenue Growth</h3>
+                    <canvas id="salesChart" style="max-height: 300px; width: 100%;"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3 style="margin-bottom: 10px; color: var(--text-muted);">Customer Segmentation</h3>
+                    <canvas id="leadsChart" style="max-height: 300px; width: 100%;"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Assistant Section -->
+        <section id="ai" class="view-section">
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="msg ai">
+                        <p>Hello! I am your AI Assistant. Ask me things like: "Write a message for [Customer Name]", "Who is my best customer?", or check "churn risk", and I will draft professional responses for your review.</p>
+                    </div>
+                </div>
+                
+                <div class="chat-input">
+                    <input type="text" id="userInput" placeholder="Ask AI to write a message or analyze customers..." onkeydown="if(event.key === 'Enter') sendToAI();">
+                    <button class="btn-primary" onclick="sendToAI()">Send</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Form: Add Customer -->
+    <div class="modal-overlay" id="addCustomerModal">
+        <div class="modal-content">
+            <h2>Add New Customer</h2>
+            <form action="/add_customer" method="POST">
+                <div class="form-group">
+                    <label>Customer Name</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="text" name="phone" required>
+                </div>
+                <div class="form-group">
+                    <label>Expected Spending (EGP)</label>
+                    <input type="number" name="total_spent" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Form: Add Ticket -->
+    <div class="modal-overlay" id="addTicketModal">
+        <div class="modal-content">
+            <h2>Create Support Ticket</h2>
+            <form action="/add_ticket" method="POST">
+                <div class="form-group">
+                    <label>Customer Name</label>
+                    <input type="text" name="customer_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Issue Description</label>
+                    <input type="text" name="issue" required>
+                </div>
+                <div class="form-group">
+                    <label>Priority</label>
+                    <select name="priority">
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeTicketModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Create Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

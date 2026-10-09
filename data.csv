@@ -1,0 +1,5 @@
+CustomerID,CustomerName,Email,Sales,Segment,Status
+C001,أحمد محمد,ahmed@example.com,1500,Hot Lead,Active
+C002,محمود علي,mahmoud@example.com,450,Warm Lead,Pending
+C003,سارة خالد,sara@example.com,3200,Hot Lead,Active
+C004,خالد يوسف,khaled@example.com,100,Cold Lead,Inactive
